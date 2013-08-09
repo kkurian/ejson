@@ -65,3 +65,10 @@ ejson_test.js: https://github.com/meteor/meteor/blob/master/packages/ejson/ejson
 ----------
 
 Copyright (c) 2011--2013 Meteor Development Group
+
+
+----------
+deep_eq
+----------
+
+Copyright (c) 2010--2013 Samuel Sutch [samuel.sutch@gmail.com]

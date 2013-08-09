@@ -207,10 +207,8 @@ add_type(BINARY_TAG, binary_factory)
 #
 # From: https://gist.github.com/samuraisam/901117
 #
-# Copyright (C) 2013 Samuel Sutch.
-#
-# Used with permission.
-#
+# Copyright (c) 2010-2013 Samuel Sutch [samuel.sutch@gmail.com]
+# License: MIT (see LICENSE for details)
 
 _default_fudge = timedelta(seconds=0, microseconds=0, days=0)
 
@@ -334,7 +332,7 @@ def _deep_eq(_v1, _v2, datetime_fudge=_default_fudge, _assert=False):
   
   return op(c1, c2)
 
-#
+# End deep_erq
 ## 
 
 
