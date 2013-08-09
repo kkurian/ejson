@@ -1,6 +1,8 @@
 Meteor's EJSON for Python 2.7
 =============================
 
+*THIS IS A WORK IN PROGRESS THAT IS NOT CURRENTLY FUNCTIONAL.*
+
   [ddp]: http://docs.meteor.com/#ejson
 
 This is a complete implementation, for Python 2.7, of EJSON as specified in
