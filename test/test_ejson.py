@@ -167,13 +167,13 @@ def _bad_factory(json):
 def test_add_type():
     # The EJSON Date and Binary types are themselves implemented using
     # add_type(). If the foregoing tests pass, it demonstrates that add_type()
-    # is, at a minimum, working.
+    # is working.
 
     # Now, Try to break add_type().
 
     # 1. Add a type that already exists.
-    pytest.raises(ejson.NameCollision, "ejson.add_type('date', _bad_factory)")
-    pytest.raises(ejson.NameCollision, "ejson.add_type('binary', _bad_factory)")
+    pytest.raises(ValueError, "ejson.add_type('date', _bad_factory)")
+    pytest.raises(ValueError, "ejson.add_type('binary', _bad_factory)")
 
     # 2. Add a factory that returns objects that do not implement the
     # required interface.
