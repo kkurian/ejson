@@ -25,8 +25,8 @@ EJSON
 EJSON is an extension of JSON to support more types. It supports all JSON-safe
 types, as well as:
 
-* Date (Python `datetime`)
-* Binary (Python `bytearray`)
+* Date (Python `datetime` with ejson.CustomType mixin)
+* Binary (Python `bytearray` with ejson.CustomType mixin)
 * User-defined types (see `ejson.add_type`)
 
 All EJSON serializations are also valid JSON. For example an object with a

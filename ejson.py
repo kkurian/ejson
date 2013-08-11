@@ -24,107 +24,123 @@ from json import JSONEncoder, JSONDecoder
 
 
 class CustomType:
-	__metaclass__ = ABCMeta
+    __metaclass__ = ABCMeta
 
-	@abstractmethod
-	def clone(self):
-		raise NotImplementedError
+    @abstractmethod
+    def clone(self):
+        raise NotImplementedError
 
-	@abstractmethod
-	def equals(self, other):
-		raise NotImplementedError
+    @abstractmethod
+    def equals(self, other):
+        raise NotImplementedError
 
-	@abstractmethod
-	def __eq__(self, other):
-		raise NotImplementedError
+    @abstractmethod
+    def __eq__(self, other):
+        raise NotImplementedError
 
-	@abstractmethod
-	def type_name(self):
-		raise NotImplementedError
+    @abstractmethod
+    def type_name(self):
+        raise NotImplementedError
 
-	@abstractmethod
-	def to_json_value(self):
-		raise NotImplementedError
+    @abstractmethod
+    def to_json_value(self):
+        raise NotImplementedError
 
 
 class EJSONEncoder(JSONEncoder):
-	_default = JSONEncoder.default
+    _default = JSONEncoder.default
 
-	def default(self, obj):
-		if not isinstance(obj, CustomType):
-			return super(EJSONEncoder, self).default(obj)
-		return obj.to_json_value()
+    def default(self, obj):
+        if not isinstance(obj, CustomType):
+            return super(EJSONEncoder, self).default(obj)
+        return obj.to_json_value()
 
 
 class EJSONDecoder(JSONDecoder):
-	_custom_type_factories = dict()
+    _custom_type_factories = dict()
 
-	def __init__(self):
-		super(EJSONDecoder, self).__init__(object_hook=default)
+    def __init__(self, encoding):
+        super(EJSONDecoder, self).__init__(
+            encoding, object_hook=EJSONDecoder.default)
 
-	@classmethod
-	def register_custom_type(cls, custom_type_name, factory):
-		if custom_type_name in cls._custom_type_factories:
-			msg = 'name collision: custom type "{}" is already in use.'
-			raise ValueError(msg.format(custom_type_name))
-		cls._custom_type_factories[custom_type_name] = factory
+    @classmethod
+    def from_json_value(cls, val):
+        try:
+            key, value = val.iteritems().next()
+            return cls._custom_type_factories[key](val)
+        except (AttributeError, KeyError):
+            # AttributeError means that val is not a dict and therefore not
+            # a CustomType. KeyError means that no custom factory exists for
+            # the val and therefore it is not a CustomType. In either case,
+            # just return the val.
+            return val
 
-	@classmethod
-	def default(cls, dict_):
-		if len(dict_) == 1 and \
-				any(key in dict_ for key in cls._custom_type_factories):
-			key = dict_.iteritems().next()
-			return cls._custom_type_factories[key](dict_)
-		return dict_
+    @classmethod
+    def register_custom_type(cls, custom_type_name, factory):
+        if custom_type_name in cls._custom_type_factories:
+            msg = 'name collision: custom type "{}" is already in use.'
+            raise ValueError(msg.format(custom_type_name))
+        cls._custom_type_factories[custom_type_name] = factory
+
+    @classmethod
+    def default(cls, dict_):
+        if len(dict_) == 1 and \
+                any(key in dict_ for key in cls._custom_type_factories):
+            key, value = dict_.iteritems().next()
+            return cls._custom_type_factories[key]({key: value})
+        return dict_
 
 
 def parse(str_):
-	return loads(str_)
+    return loads(str_)
 
 
 def loads(str_):
-	return json.loads(str_, cls=EJSONDecoder)
+    return json.loads(str_, cls=EJSONDecoder)
 
 
 def stringify(val):
-	return dumps(val)
+    return dumps(val)
 
 
 def dumps(val):
-	return json.dumps(val, cls=EJSONEncoder)
+    return json.dumps(val, cls=EJSONEncoder)
+
 
 
 def from_json_value(val):
-	return EJSONDecoder.default(val)
+    return EJSONDecoder.from_json_value(val)
 
 
 def to_json_value(val):
-	return EJSONEncoder.default(val)
-
+    if isinstance(val, CustomType):
+        return val.to_json_value()
+    return val
+    
 
 def equals(a, b):
-	if hasattr(a, '__eq__'):
-		return a.__eq__(b)
-	return _deep_eq(a, b)
+    if hasattr(a, '__eq__'):
+        return a.__eq__(b)
+    return _deep_eq(a, b)
 
 
 def clone(val):
-	return deepcopy(val)
+    return deepcopy(val)
 
 
 # No need to def deepcopy(). See `from copy import deepcopy`, above.
 
 
 def new_binary(size):
-	return bytearray(size)
+    return bytearray(size)
 
 
 def is_binary(x):
-	return isinstance(x, bytearray)
+    return isinstance(x, bytearray)
 
 
 def add_type(name, factory):
-	EJSONDecoder.register_custom_type(name, factory)
+    EJSONDecoder.register_custom_type(name, factory)
 
 
 
@@ -137,60 +153,60 @@ BINARY_TAG = '$binary'
 # Date
 
 class Date(datetime, CustomType):
-	def clone(self):
-		return deepcopy(self)
+    def clone(self):
+        return deepcopy(self)
 
-	def equals(self, other):
-		return self.__eq__(other)
+    def equals(self, other):
+        return self.__eq__(other)
 
-	# __eq__ is defined by datetime.
+    # __eq__ is defined by datetime.
 
-	def type_name(self):
-		return DATE_TAG
+    def type_name(self):
+        return DATE_TAG
 
-	def to_json_value(self):
-		msecs_since_epoch = \
-			mktime(self.timetuple())*1e3 + self.microseconds/1e3
-		return ''.join(['{"', DATE_TAG, '": ', msecs_since_epoch, '}'])
+    def to_json_value(self):
+        msecs_since_epoch = \
+            int(mktime(self.timetuple())*1e3 + self.microsecond/1e3)
+        return {DATE_TAG: msecs_since_epoch}
 
 
 def date_factory(json_dict):
-	if len(json_dict) != 1:
-		raise ValueError('Too many keys in {}.'.format(json_dict))
+    if len(json_dict) != 1:
+        raise ValueError('Too many keys in {}.'.format(json_dict))
 
-	try:
-		timestamp = json_dict[DATE_TAG] / 1000.0 # milliseconds --> seconds
-		return Date.fromtimestamp(timestamp)		
-	except Exception as e:
-		raise ValueError(e)
+    try:
+        timestamp = json_dict[DATE_TAG] / 1000.0 # milliseconds --> seconds
+        return Date.fromtimestamp(timestamp)        
+    except Exception as e:
+        raise ValueError(e)
 
 
 # Binary
 
 class Binary(bytearray, CustomType):
-	def clone(self):
-		return deepcopy(self)
+    def clone(self):
+        return deepcopy(self)
 
-	def equals(self, other):
-		return self.__eq__(other)
+    def equals(self, other):
+        return self.__eq__(other)
 
-	# __eq__ is defined by datetime.
+    # __eq__ is defined by datetime.
 
-	def type_name(self):
-		return BINARY_TAG
+    def type_name(self):
+        return BINARY_TAG
 
-	def to_json_value(self):
-		return ''.join(['{"', BINARY_TAG, ': ', b64encode(self), '}'])
+    def to_json_value(self):
+        return {BINARY_TAG: b64encode(self)}
 
 
 def binary_factory(json_dict):
-	if len(json_dict) != 1:
-		raise ValueError('Too many keys in {}.'.format(json_dict))
+    if len(json_dict) != 1:
+        raise ValueError('Too many keys in {}.'.format(json_dict))
 
-	try:
-		return Binary(b64decode(json_dict[BINARY_TAG]))
-	except Exception as e:
-		return ValueError(e)
+    try:
+        return Binary(b64decode(json_dict[BINARY_TAG]))
+    except Exception as e:
+        return ValueError(e)
 
 
 # Install Date and Binary
@@ -332,10 +348,10 @@ def _deep_eq(_v1, _v2, datetime_fudge=_default_fudge, _assert=False):
   
   return op(c1, c2)
 
-# End deep_erq
+# End deep_eq
 ## 
 
 
 if __name__ == '__main__':
-	import doctest
-	doctest.testmod()
+    import doctest
+    doctest.testmod()

@@ -18,27 +18,30 @@ MS_SINCE_EPOCH = 1358205756553
 # Test Date and Binary
 
 def _assert_serialize_deserialize_equals_and_is_binary(
-    ejson_obj, json, is_binary
+    ejson_obj, json_obj, json_str, is_binary
 ):
-    assert json == ejson.stringify(ejson_obj)
-    assert json == ejson.dumps(ejson_obj)
-    assert json == ejson.to_json_value(ejson_obj)
+    assert json_str == ejson.stringify(ejson_obj)
+    assert json_str == ejson.dumps(ejson_obj)
+    assert json_obj == ejson.to_json_value(ejson_obj)
 
-    assert ejson_obj == ejson.parse(json)
-    assert ejson_obj == ejson.loads(json)
-    assert ejson_obj == ejson.from_json_value(json)
+    assert ejson_obj == ejson.parse(json_str)
+    assert ejson_obj == ejson.loads(json_str)
+    assert ejson_obj == ejson.from_json_value(json_obj)
 
     ejson_obj2 = deepcopy(ejson_obj)
 
-    assert ejson.equals(obj, ejson_obj2)
-    assert ejson.equals(obj, ejson.clone(obj))
-    assert is_binary == ejson.is_binary(obj)
+    assert ejson.equals(ejson_obj, ejson_obj2)
+    assert ejson.equals(ejson_obj, ejson.clone(ejson_obj))
+    assert is_binary == ejson.is_binary(ejson_obj)
+
 
 def test_date():
-    ejson_obj = {'$date': datetime.fromtimestamp(MS_SINCE_EPOCH/1000.0)}
-    json = '{"$date": ' + str(MS_SINCE_EPOCH) + '}'
+    ejson_obj = ejson.Date.fromtimestamp(MS_SINCE_EPOCH/1000.0)
+    json_obj = {'$date': MS_SINCE_EPOCH}
+    json_str = '{"$date": ' + str(MS_SINCE_EPOCH) + '}'
 
-    _assert_serialize_deserialize_equals_and_is_binary(ejson_obj, json, False)
+    _assert_serialize_deserialize_equals_and_is_binary(
+        ejson_obj, json_obj, json_str, False)
 
 
 def test_binary():
@@ -48,9 +51,11 @@ def test_binary():
     assert len(obj) == 5
 
     obj[:] = b'sure.'
-    obj_json = '{"$binary": "c3VyZS4="}'
+    json_obj = {'$binary': "c3VyZS4="}
+    json_str = '{"$binary": "c3VyZS4="}'
 
-    _assert_serialize_deserialize_equals_and_is_binary(ejson_obj, json, True)
+    _assert_serialize_deserialize_equals_and_is_binary(
+        ejson_obj, json_obj, json_str, True)
 #
 ##
 
