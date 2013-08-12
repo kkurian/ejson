@@ -45,12 +45,12 @@ def test_date():
 
 
 def test_binary():
-    obj = ejson.new_binary(5)
+    ejson_obj = ejson.new_binary(5)
 
-    assert isinstance(obj, bytearray)
-    assert len(obj) == 5
+    assert isinstance(ejson_obj, bytearray)
+    assert len(ejson_obj) == 5
 
-    obj[:] = b'sure.'
+    ejson_obj[:] = b'sure.'
     json_obj = {'$binary': "c3VyZS4="}
     json_str = '{"$binary": "c3VyZS4="}'
 
@@ -64,18 +64,14 @@ def test_binary():
 # Test Parse and Loads
 
 def _parse_test(method):
-    obj_json = ''.join([
-        '{"$binary": "c3VyZS4="}, {"$date": ', MS_SINCE_EPOCH, '}, "a": true}'
-    ])
-    obj = method(obj_json)
+    ms = str(MS_SINCE_EPOCH)
+    json_str = '[{"$binary": "c3VyZS4="}, {"$date": ' + ms + '}, {"a": true}]'
 
-    assert len(obj) == 3
-    for key, value in [
-        ('$binary', bytearray(b'sure.')),
-        ('$date', datetime.fromtimestamp(MS_SINCE_EPOCH/1000.0)),
-        ('a', True)
-    ]:
-        assert obj[key] == value
+    obj = method(json_str)
+    
+    assert obj[0] == ejson.Binary(b'sure.')
+    assert obj[1] == ejson.Date.fromtimestamp(MS_SINCE_EPOCH/1e3)
+    assert obj[2] == {'a': True}
 
 def test_parse():
     _parse_test(ejson.parse)

@@ -17,6 +17,7 @@ __license__ = 'MIT'
 import json
 from time import mktime
 from copy import deepcopy
+from base64 import b64encode, b64decode
 from abc import ABCMeta, abstractmethod
 from datetime import datetime, timedelta
 from json import JSONEncoder, JSONDecoder
@@ -132,11 +133,11 @@ def clone(val):
 
 
 def new_binary(size):
-    return bytearray(size)
+    return Binary(size)
 
 
 def is_binary(x):
-    return isinstance(x, bytearray)
+    return isinstance(x, Binary)
 
 
 def add_type(name, factory):
