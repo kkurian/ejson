@@ -5,7 +5,7 @@ License: MIT (see LICENSE for details)
 
 from copy import deepcopy
 from random import choice
-from datetime import datetime
+from datetime import timedelta
 
 import pytest
 
@@ -14,9 +14,49 @@ import ejson
 
 MS_SINCE_EPOCH = 1358205756553
 
-##
-# Test Date and Binary
 
+ejsonobj_string_pairs = [
+    (
+        # EJSON Date
+        ejson.Date.fromtimestamp(MS_SINCE_EPOCH/1000.0),
+        ''.join(['{"$date": ', str(MS_SINCE_EPOCH), '}'])
+    ), (
+        # EJSON Binary
+        ejson.Binary(b'sure.'),
+        '{"$binary": "c3VyZS4="}'
+    )
+]
+
+json_string_pairs = [
+    (
+        # Regular JSON
+        {'foo': 'bar'},
+        '{"foo": "bar"}'
+    )
+]
+
+ejsonobj_json_pairs = [
+    (
+        # EJSON Date
+        ejson.Date.fromtimestamp(MS_SINCE_EPOCH/1000.0),
+        {"$date": MS_SINCE_EPOCH}
+    ), (
+        # EJSON Binary
+        ejson.Binary(b'sure.'),
+        {"$binary": "c3VyZS4="}
+    )
+]
+
+json_json_pairs = [
+    (
+        # Regular JSON
+        {'foo': 'bar'},
+        {"foo": "bar"}
+    )
+]
+
+
+## Test Date and Binary
 def _assert_serialize_deserialize_equals_and_is_binary(
     ejson_obj, json_obj, json_str, is_binary
 ):
@@ -56,13 +96,10 @@ def test_binary():
 
     _assert_serialize_deserialize_equals_and_is_binary(
         ejson_obj, json_obj, json_str, True)
-#
 ##
 
 
-##
-# Test Parse and Loads
-
+## Test Parse and Loads
 def _parse_test(method):
     ms = str(MS_SINCE_EPOCH)
     json_str = '[{"$binary": "c3VyZS4="}, {"$date": ' + ms + '}, {"a": true}]'
@@ -78,73 +115,80 @@ def test_parse():
 
 def test_loads():
     _parse_test(ejson.loads)
-#
 ##
 
 
-parameters = [
-    (
-        # EJSON Date
-        {'$date': datetime.fromtimestamp(MS_SINCE_EPOCH/1000.0)},
-        ''.join(['{"$date": ', str(MS_SINCE_EPOCH), '}'])
-    ), (
-        # EJSON Binary
-        {'$binary': bytearray(b'sure.')},
-        '{"$binary": "c3VyZS4="}'
-    ), (
-        # Regular JSON
-        {'foo': 'bar'},
-        '{"foo": "bar"}'
-    )
-]
+
+@pytest.mark.parametrize(
+    ('ejsonobj', 'string'),
+    ejsonobj_string_pairs + json_string_pairs
+)
+def test_stringify_and_dumps(ejsonobj, string):
+    assert string == ejson.stringify(ejsonobj)
+    assert string == ejson.dumps(ejsonobj)
 
 
-@pytest.mark.parametrize(('ejson_obj', 'json'), parameters)
-def test_stringify_and_dumps(ejson_obj, json):
-    assert json == ejson.stringify(ejson_obj)
-    assert json == ejson.dumps(ejson_obj)
+@pytest.mark.parametrize(
+    ('ejsonobj', 'json'),
+    ejsonobj_json_pairs + json_json_pairs
+)
+def test_from_json_value(ejsonobj, json):
+    assert ejsonobj == ejson.from_json_value(json)
 
 
-@pytest.mark.parametrize(('ejson_obj', 'json'), parameters)
-def test_from_json_value(ejson_obj, json):
-    assert ejson_obj == ejson.from_json_value(json)
+@pytest.mark.parametrize(
+    ('ejsonobj', 'json'),
+    ejsonobj_json_pairs + json_json_pairs
+)
+def test_to_json_value(ejsonobj, json):
+    assert json == ejson.to_json_value(ejsonobj)
 
 
-@pytest.mark.parametrize(('ejson_obj', 'json'), parameters)
-def test_to_json_value(ejson_obj, json):
-    assert json == ejson.to_json_value(ejson_obj)
-
-
-@pytest.mark.parametrize(('ejson_obj', 'json'), parameters)
-def test_equals_and_eq(ejson_obj, json):
-    ejson_obj_copy = deepcopy(ejson_obj)
-    ejson_obj_copy_2 = deepcopy(ejson_obj_copy)
+@pytest.mark.parametrize(
+    ('ejsonobj', 'json'),
+    ejsonobj_json_pairs + json_json_pairs
+)
+def test_equals_and_eq(ejsonobj, json):
+    ejsonobj_copy = deepcopy(ejsonobj)
+    ejsonobj_copy_2 = deepcopy(ejsonobj_copy)
 
     # Reflexivity
-    assert ejson.equals(ejson_obj, ejson_obj)
+    assert ejson.equals(ejsonobj, ejsonobj)
 
     # Symmetry
-    assert ejson.equals(ejson_obj, ejson_obj_copy)
-    assert ejson.equals(ejson_obj_copy, ejson_obj)
+    assert ejson.equals(ejsonobj, ejsonobj_copy)
+    assert ejson.equals(ejsonobj_copy, ejsonobj)
 
     # Transivity
-    assert ejson.equals(ejson_obj, ejson_obj_copy)
-    assert ejson.equals(ejson_obj_copy, ejson_obj_copy_2)
-    assert ejson.equals(ejson_obj, ejson_obj_copy_2)
+    assert ejson.equals(ejsonobj, ejsonobj_copy)
+    assert ejson.equals(ejsonobj_copy, ejsonobj_copy_2)
+    assert ejson.equals(ejsonobj, ejsonobj_copy_2)
 
 
-@pytest.mark.parametrize(('ejson_obj', 'json'), parameters)
-def test_clone(ejson_obj, json):
-    clone = ejson.clone(ejson_obj)
+@pytest.mark.parametrize(
+    ('ejsonobj', 'json'),
+    ejsonobj_json_pairs + json_json_pairs
+)
+def test_clone(ejsonobj, json):
+    clone = ejson.clone(ejsonobj)
 
-    assert clone == ejson_obj
+    assert clone == ejsonobj
 
     # clone() must return a value r such that r.__eq__(r) is always True,
     # even if r is later modified.
-    clone[clone.keys()[0]] = 'blarghz'
-    assert clone == clone
+    if isinstance(ejsonobj, ejson.Date):
+        ejsonobj += timedelta(hours=1)        
+    elif isinstance(ejsonobj, ejson.Binary):
+        ejsonobj[:0] = b'x'
+    elif isinstance(ejsonobj, dict): # is JSON object
+        # Change the value of the first key.
+        assert ejsonobj[ejsonobj.keys()[0]] != 'x'
+        ejsonobj[ejsonobj.keys()[0]] = 'x'
+    else:
+        assert False # You need to implement this for your new type.
 
-    assert clone != ejson_obj
+    assert clone == clone
+    assert clone != ejsonobj
 
 
 def test_new_binary():
@@ -172,14 +216,6 @@ def test_add_type():
 
     # Now, Try to break add_type().
 
-    # 1. Add a type that already exists.
-    pytest.raises(ValueError, "ejson.add_type('date', _bad_factory)")
-    pytest.raises(ValueError, "ejson.add_type('binary', _bad_factory)")
-
-    # 2. Add a factory that returns objects that do not implement the
-    # required interface.
-    ejson.add_type('bad', _bad_factory)
-    pytest.raises(
-        ejson.BadFactory,
-        lambda: ejson.from_json_value("{$bad': 'foo'}")
-    )
+    # Add a types that already exists.
+    pytest.raises(ValueError, "ejson.add_type('$date', _bad_factory)")
+    pytest.raises(ValueError, "ejson.add_type('$binary', _bad_factory)")

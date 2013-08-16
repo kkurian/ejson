@@ -151,8 +151,7 @@ DATE_TAG = '$date'
 BINARY_TAG = '$binary'
 
 
-# Date
-
+## Date
 class Date(datetime, CustomType):
     def clone(self):
         return deepcopy(self)
@@ -182,8 +181,7 @@ def date_factory(json_dict):
         raise ValueError(e)
 
 
-# Binary
-
+## Binary
 class Binary(bytearray, CustomType):
     def clone(self):
         return deepcopy(self)
@@ -210,12 +208,11 @@ def binary_factory(json_dict):
         return ValueError(e)
 
 
-# Install Date and Binary
+## Install Date and Binary
 add_type(DATE_TAG, date_factory)
 add_type(BINARY_TAG, binary_factory)
 
-#
-##
+
 
 ### Third-party code
 
