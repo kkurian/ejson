@@ -42,7 +42,7 @@ date and a binary buffer would be serialized in EJSON as:
 Parse a string into an EJSON value. Throws an error if the string is not valid
 ejson.
 
-`str` (str)<br/>
+`str` (str)<br>
 A string to parse into an EJSON value.
 
 
@@ -53,41 +53,46 @@ Serialize a value to a string.
 For EJSON values, the serialization fully represents the value. For non-EJSON
 values, serializes the same way as `json.dumps`.
 
-`val` (EJSON-compatible value)<br/>
+`val` (EJSON-compatible value)<br>
 A value to stringify.
 
 
 ### ejson.from\_json\_value(val)
 
-Deserialize an EJSON value from its plain JSON representation.
+Deserialize an EJSON value from its plain JSON representation (that is, a
+`dict`).
 
-`val` (JSON-compatible value)<br/>
+`val` (JSON-compatible value)<br>
 A value to deserialize into ejson.
 
 
 ### ejson.to\_json\_value(val)
 
-Serialize an EJSON-compatible value into its plain JSON representation.
+Serialize an EJSON-compatible value into its plain JSON representation (that
+is, a `dict`).
 
-`val` (EJSON-compatible value)<br/>
+`val` (EJSON-compatible value)<br>
 A value to serialize to plain JSON.
 
 
-### ejson.equals(a, b)
+### ejson.equals(a, b, key_order_sensitive=False)
 
 Return `True` if `a` and `b` are equal to each other. Return `False`
 otherwise. Uses the `__eq__` method on `a` if present, otherwise performs a
 deep comparison.
 
-`a` (EJSON-compatible object)<br/>
-`b` (EJSON-compatible object)
+If `key_order_sensitive` is True, then the order of the keys in `a` and `b`
+must be identical for `a` and `b` to be equal.
 
+`a` (EJSON-compatible object)<br>
+`b` (EJSON-compatible object)<br>
+`key_order_sensitive` (Boolean)
 
 ### ejson.clone(val), ejson.deepcopy(val)
 
 Return a deep copy of val.
 
-`val` (EJSON-compatible value)<br/>
+`val` (EJSON-compatible value)<br>
 A value to copy.
 
 
@@ -95,10 +100,10 @@ A value to copy.
 
 Allocate a new buffer of binary data that EJSON can serialize.
 
-`size` (int)<br/>
+`size` (int)<br>
 The number of bytes of binary data to allocate.
 
-Buffers of binary data are represented by `bytearray` instances containing
+Buffers of binary data are represented by `Binary` instances containing
 numbers ranging from 0 to 255.
 
 
@@ -115,11 +120,11 @@ Add a custom datatype to EJSON.
 Raises `ValueError` if `name` is not unique among custom data types
 defined in your project.
 
-`name` (String)<br/>
+`name` (String)<br>
 A tag for your custom type (e.g., `'$my_type'`); must be unique among custom data types defined in
 your project, and must match the result of your type's `type_name` method.
 
-`factory` (function)<br/>
+`factory` (function)<br>
 A function that converts a JSON-compatible `dict` (something like `{"$my_type":
 "some value"}`) into an instance of your type. This should be the inverse of
 the serialization performed by your type's `to_json_value` method. Your
@@ -143,10 +148,10 @@ later modified.
 
 Return `True` if `other` has a value equal to `self`; `False` otherwise.
 
-`other` (object)<br/>
+`other` (object)<br>
 The object to which to compare `self`.
 
-The equals method should define an equivalence relation. It should have the
+The `equals` method must define an equivalence relation. It must have the
 following properties:
 
 * Reflexivity - for any instance `a`: `a.equals(a)` must be `True`.

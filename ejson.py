@@ -17,11 +17,11 @@ __license__ = 'MIT'
 import json
 from time import mktime
 from copy import deepcopy
+from collections import OrderedDict
 from base64 import b64encode, b64decode
 from abc import ABCMeta, abstractmethod
 from datetime import datetime, timedelta
 from json import JSONEncoder, JSONDecoder
-
 
 
 class CustomType:
@@ -60,9 +60,18 @@ class EJSONEncoder(JSONEncoder):
 class EJSONDecoder(JSONDecoder):
     _custom_type_factories = dict()
 
-    def __init__(self, encoding):
-        super(EJSONDecoder, self).__init__(
-            encoding, object_hook=EJSONDecoder.default)
+    def __init__(self, encoding, object_hook=None):
+        if object_hook:
+            # Decode inputs into regular (unordered) dicts using the
+            # object_hook to handle custom JSON objects.
+            super(EJSONDecoder, self).__init__(
+                encoding,
+                object_hook=object_hook)
+        else:
+            # Decode inputs into OrderedDict's.
+            super(EJSONDecoder, self).__init__(
+                encoding,
+                object_pairs_hook=EJSONDecoder.default)
 
     @classmethod
     def from_json_value(cls, val):
@@ -84,11 +93,47 @@ class EJSONDecoder(JSONDecoder):
         cls._custom_type_factories[custom_type_name] = factory
 
     @classmethod
+    def default(cls, pairs):
+      """
+      Receives inputs like:
+      [(u'b', 1), (u'c', 2)]
+      [(u'a', [(u'b', 1), (u'c', 2)]), (u'd', [(u'e', 3)])]
+      [(u'$date', 1358205756553)]
+      
+      Returns results like:
+      OrderedDict([(u'b', 1), (u'c', 2)])
+      OrderedDict([(u'a', [(u'b', 1), (u'c', 2)]), (u'd', [(u'e', 3)])])
+      Date(2013, 1, 14, 16, 22, 36, 553000)
+      """
+      result = OrderedDict()
+      
+      if len(pairs) == 1:
+            key, value = pairs[0]
+            if any(k == key for k in cls._custom_type_factories):
+                return cls._custom_type_factories[key]({key: value})
+      
+      for pair in pairs:
+            key, value = pair
+            if isinstance(value, list):
+                result[key] = cls.default(value)
+            else:
+                result[key] = value
+      
+      return result
+
+
+class EJSONUnorderedDecoder(EJSONDecoder):
+    def __init__(self, encoding):
+        super(EJSONUnorderedDecoder, self).__init__(
+            encoding,
+            object_hook=EJSONUnorderedDecoder.default)
+    
+    @classmethod
     def default(cls, dict_):
         if len(dict_) == 1 and \
-                any(key in dict_ for key in cls._custom_type_factories):
+                any(k in dict_ for k in cls._custom_type_factories):
             key, value = dict_.iteritems().next()
-            return cls._custom_type_factories[key]({key: value})
+            return cls._custom_type_factories[key]({key: value})    
         return dict_
 
 
@@ -108,7 +153,6 @@ def dumps(val):
     return json.dumps(val, cls=EJSONEncoder)
 
 
-
 def from_json_value(val):
     return EJSONDecoder.from_json_value(val)
 
@@ -119,7 +163,11 @@ def to_json_value(val):
     return val
     
 
-def equals(a, b):
+def equals(a, b, key_order_sensitive=False):
+    if not key_order_sensitive:
+        a = json.loads(dumps(a), cls=EJSONUnorderedDecoder)
+        b = json.loads(dumps(b), cls=EJSONUnorderedDecoder)
+
     if hasattr(a, '__eq__'):
         return a.__eq__(b)
     return _deep_eq(a, b)
@@ -235,12 +283,12 @@ def _deep_eq(_v1, _v2, datetime_fudge=_default_fudge, _assert=False):
   you may blow the stack.
   
   Options:
-            datetime_fudge => this is a datetime.timedelta object which, when
-                              comparing dates, will accept values that differ
-                              by the number of seconds specified
-            _assert        => passing yes for this will raise an assertion error
-                              when values do not match, instead of returning 
-                              false (very useful in combination with pdb)
+        datetime_fudge => this is a datetime.timedelta object which, when
+                          comparing dates, will accept values that differ
+                          by the number of seconds specified
+        _assert        => passing yes for this will raise an assertion error
+                          when values do not match, instead of returning 
+                          false (very useful in combination with pdb)
   
   Doctests included:
   

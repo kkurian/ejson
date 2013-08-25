@@ -9,36 +9,52 @@ url: https://github.com/meteor/meteor/blob/master/packages/ejson/ejson_test.js
 commit: 9bb2b5447e845c4f483df5e9b42a2c1de5ab909b
 """
 
-# XXX TBD
+import pytest
+import ejson
 
-# Tinytest.add("ejson - keyOrderSensitive", function (test) {
-#   test.isTrue(EJSON.equals({
-#     a: {b: 1, c: 2},
-#     d: {e: 3, f: 4}
-#   }, {
-#     d: {f: 4, e: 3},
-#     a: {c: 2, b: 1}
-#   }));
+def test_key_order_sensitive():
+    # Tinytest.add("ejson - keyOrderSensitive", function (test) {
+    #   test.isTrue(EJSON.equals({
+    #     a: {b: 1, c: 2},
+    #     d: {e: 3, f: 4}
+    #   }, {
+    #     d: {f: 4, e: 3},
+    #     a: {c: 2, b: 1}
+    #   }));
+    obj = ejson.loads('{"a": {"b": 1, "c": 2}, "d": {"e": 3, "f": 4}}')
+    obj2 = ejson.loads('{"d": {"f": 4, "e": 3}, "a": {"c": 2, "b": 1}}')
+    assert ejson.equals(obj, obj2)
 
-#   test.isFalse(EJSON.equals({
-#     a: {b: 1, c: 2},
-#     d: {e: 3, f: 4}
-#   }, {
-#     d: {f: 4, e: 3},
-#     a: {c: 2, b: 1}
-#   }, {keyOrderSensitive: true}));
+    #   test.isFalse(EJSON.equals({
+    #     a: {b: 1, c: 2},
+    #     d: {e: 3, f: 4}
+    #   }, {
+    #     d: {f: 4, e: 3},
+    #     a: {c: 2, b: 1}
+    #   }, {keyOrderSensitive: true}));
+    assert not ejson.equals(obj, obj2, key_order_sensitive=True)
+    
+    #   test.isFalse(EJSON.equals({
+    #     a: {b: 1, c: 2},
+    #     d: {e: 3, f: 4}
+    #   }, {
+    #     a: {c: 2, b: 1},
+    #     d: {f: 4, e: 3}
+    #   }, {keyOrderSensitive: true}));
+    obj = ejson.loads('{"a": {"b": 1, "c": 2}, "d": {"e": 3, "f": 4}}')
+    obj2 = ejson.loads('{"a": {"c": 2, "b": 1}, "d": {"f": 4, "e": 3}}')
+    assert not ejson.equals(obj, obj2, key_order_sensitive=True)
 
-#   test.isFalse(EJSON.equals({
-#     a: {b: 1, c: 2},
-#     d: {e: 3, f: 4}
-#   }, {
-#     a: {c: 2, b: 1},
-#     d: {f: 4, e: 3}
-#   }, {keyOrderSensitive: true}));
-#   test.isFalse(EJSON.equals({a: {}}, {a: {b:2}}, {keyOrderSensitive: true}));
-#   test.isFalse(EJSON.equals({a: {b:2}}, {a: {}}, {keyOrderSensitive: true}));
-# });
+    #   test.isFalse(EJSON.equals({a: {}}, {a: {b:2}}, {keyOrderSensitive: true}));
+    obj = ejson.loads('{"a": {}}')
+    obj2 = ejson.loads('{"a": {"b":2}}')
+    assert not ejson.equals(obj, obj2, key_order_sensitive=True)
 
+    #   test.isFalse(EJSON.equals({a: {b:2}}, {a: {}}, {keyOrderSensitive: true}));
+    assert not ejson.equals(obj2, obj, key_order_sensitive=True)    
+
+    # });
+    
 # Tinytest.add("ejson - nesting and literal", function (test) {
 #   var d = new Date;
 #   var obj = {$date: d};
